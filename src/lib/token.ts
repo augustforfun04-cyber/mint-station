@@ -8,14 +8,15 @@ export const DEAD_ADDRESS = "0x000000000000000000000000000000000000dEaD";
 
 export type MintMode = "percent" | "amount";
 export type RemainderTarget = "deployer" | "custom" | "dead";
-export type TokenPreset = "memecoin" | "agent" | "utility" | "fair" | "custom";
 
 export type DeployFormState = {
-  preset: TokenPreset;
   chainId: number;
   tokenName: string;
   tokenSymbol: string;
+  image: string;
   description: string;
+  twitter: string;
+  telegram: string;
   decimals: number;
   totalSupply: string;
   mintMode: MintMode;
@@ -30,75 +31,14 @@ export type DeployFormState = {
   maxSupply: string;
 };
 
-export const PRESETS: Record<
-  Exclude<TokenPreset, "custom">,
-  {
-    label: string;
-    blurb: string;
-    patch: Partial<DeployFormState>;
-  }
-> = {
-  memecoin: {
-    label: "Memecoin",
-    blurb: "Supply besar, 18 desimal — standar meme 2026 di Base.",
-    patch: {
-      decimals: 18,
-      totalSupply: "1000000000",
-      mintMode: "percent",
-      mintPercent: 100,
-      mintable: false,
-      burnable: true,
-      capMaxSupply: true,
-    },
-  },
-  agent: {
-    label: "Agent / AI",
-    blurb: "Supply 100 miliar ala token agent, mint ke treasury tujuan.",
-    patch: {
-      decimals: 18,
-      totalSupply: "100000000000",
-      mintMode: "percent",
-      mintPercent: 15,
-      mintable: false,
-      burnable: false,
-      capMaxSupply: true,
-    },
-  },
-  utility: {
-    label: "Utility",
-    blurb: "Supply menengah, sisa ke deployer untuk likuiditas.",
-    patch: {
-      decimals: 18,
-      totalSupply: "100000000",
-      mintMode: "percent",
-      mintPercent: 20,
-      mintable: true,
-      burnable: true,
-      capMaxSupply: true,
-      maxSupply: "200000000",
-    },
-  },
-  fair: {
-    label: "Fair (tanpa premint)",
-    blurb: "0% ke wallet lain — seluruh supply ke deployer/LP.",
-    patch: {
-      decimals: 18,
-      totalSupply: "1000000000",
-      mintMode: "percent",
-      mintPercent: 0,
-      mintable: false,
-      burnable: false,
-      capMaxSupply: true,
-    },
-  },
-};
-
 export const DEFAULT_FORM: DeployFormState = {
-  preset: "memecoin",
   chainId: base.id,
   tokenName: "",
   tokenSymbol: "",
+  image: "",
   description: "",
+  twitter: "",
+  telegram: "",
   decimals: 18,
   totalSupply: "1000000000",
   mintMode: "percent",
@@ -108,7 +48,7 @@ export const DEFAULT_FORM: DeployFormState = {
   remainderTarget: "deployer",
   remainderWallet: "",
   mintable: false,
-  burnable: true,
+  burnable: false,
   capMaxSupply: true,
   maxSupply: "1000000000",
 };
@@ -120,18 +60,6 @@ export type Allocation = {
   maxSupply: bigint;
   remainderAddress: `0x${string}`;
 };
-
-export function applyPreset(
-  current: DeployFormState,
-  preset: TokenPreset,
-): DeployFormState {
-  if (preset === "custom") return { ...current, preset };
-  const next = { ...current, ...PRESETS[preset].patch, preset };
-  if (next.capMaxSupply && !PRESETS[preset].patch.maxSupply) {
-    next.maxSupply = next.totalSupply;
-  }
-  return next;
-}
 
 export function parseTokenAmount(value: string, decimals: number): bigint {
   const trimmed = value.trim().replaceAll(",", "");
@@ -194,8 +122,8 @@ export function validateDeployForm(
 ): string | null {
   if (!form.tokenName.trim()) return "Nama token wajib diisi.";
   if (form.tokenName.trim().length > 64) return "Nama token maksimal 64 karakter.";
-  if (!form.tokenSymbol.trim()) return "Simbol token wajib diisi.";
-  if (form.tokenSymbol.trim().length > 16) return "Simbol maksimal 16 karakter.";
+  if (!form.tokenSymbol.trim()) return "Ticker wajib diisi.";
+  if (form.tokenSymbol.trim().length > 16) return "Ticker maksimal 16 karakter.";
   if (form.decimals < 0 || form.decimals > 18) return "Desimal harus 0–18.";
   let total: bigint;
   try {
@@ -227,7 +155,7 @@ export function validateDeployForm(
     }
   }
   if (form.capMaxSupply) {
-    if (alloc.maxSupply <= ZERO) return "Max supply harus lebih dari 0, atau matikan cap.";
+    if (alloc.maxSupply <= ZERO) return "Max supply harus lebih dari 0.";
     if (alloc.total > alloc.maxSupply) return "Total supply tidak boleh melebihi max supply.";
   }
   return null;

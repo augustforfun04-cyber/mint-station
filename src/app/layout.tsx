@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Manual Token Lab — deploy & mint supply ke wallet tujuan",
+  title: "Launch token",
   description:
-    "Deploy ERC-20 on-chain tanpa Bankr API. Total supply, mint ke wallet tujuan, sisa, mintable, dan chain semuanya diatur manual.",
+    "Launch ERC-20: nama, ticker, gambar, dan mint supply ke wallet tujuan.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -32,9 +32,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
             {children}
           </main>
-          <footer className="border-t border-white/10 py-6 text-center text-xs text-muted-foreground">
-            Kontrak ERC-20 kamu sendiri · wallet menandatangani deploy · tidak
-            ada Bankr API.
+          <footer className="border-t border-white/8 py-6 text-center text-xs text-zinc-500">
+            Deploy on-chain dari wallet kamu.
           </footer>
         </Providers>
       </body>

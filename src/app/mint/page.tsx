@@ -9,11 +9,7 @@ export default async function MintPage({
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Mint ke wallet tujuan</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-          Isi alamat token mintable, wallet tujuan, dan jumlah. Tidak ada kuota
-          atau API key — hanya owner on-chain yang bisa mint.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Mint</h1>
       </div>
       <MintForm initialToken={params.token ?? ""} />
     </div>

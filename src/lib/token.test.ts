@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   DEFAULT_FORM,
-  applyPreset,
   computeAllocation,
   constructorArgs,
   validateDeployForm,
@@ -10,23 +9,22 @@ import {
 
 const TEN18 = BigInt(10) ** BigInt(18);
 
-test("mint persen 15% ke wallet tujuan", () => {
-  const form = applyPreset(
-    {
-      ...DEFAULT_FORM,
-      tokenName: "Agent",
-      tokenSymbol: "AGT",
-      destination: "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D",
-    },
-    "agent",
-  );
+test("mint persen custom ke wallet tujuan", () => {
+  const form = {
+    ...DEFAULT_FORM,
+    tokenName: "Agent",
+    tokenSymbol: "AGT",
+    totalSupply: "100000000000",
+    mintPercent: 15,
+    destination: "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D",
+  };
   const alloc = computeAllocation(form);
   assert.equal(alloc.total, BigInt(100_000_000_000) * TEN18);
   assert.equal(alloc.toDestination, BigInt(15_000_000_000) * TEN18);
   assert.equal(alloc.toRemainder, BigInt(85_000_000_000) * TEN18);
 });
 
-test("mint jumlah manual, bukan 15% tetap", () => {
+test("mint jumlah exact, bukan persen tetap", () => {
   const form = {
     ...DEFAULT_FORM,
     tokenName: "Moon",
@@ -35,22 +33,10 @@ test("mint jumlah manual, bukan 15% tetap", () => {
     mintMode: "amount" as const,
     mintAmount: "250.5",
     destination: "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D",
-    decimals: 18,
   };
   const alloc = computeAllocation(form);
   assert.equal(alloc.toDestination, BigInt(2505) * BigInt(10) ** BigInt(17));
   assert.equal(alloc.toRemainder, BigInt(7495) * BigInt(10) ** BigInt(17));
-});
-
-test("fair preset tidak mint ke tujuan", () => {
-  const form = applyPreset(
-    { ...DEFAULT_FORM, tokenName: "Fair", tokenSymbol: "FAIR" },
-    "fair",
-  );
-  assert.equal(form.mintPercent, 0);
-  const alloc = computeAllocation(form, "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D");
-  assert.equal(alloc.toDestination, BigInt(0));
-  assert.equal(alloc.toRemainder, alloc.total);
 });
 
 test("validasi wallet tujuan jika ada mint", () => {
