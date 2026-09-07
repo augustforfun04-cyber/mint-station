@@ -9,12 +9,14 @@ import {
   mainnet,
   optimism,
   polygon,
+  robinhood,
   unichain,
   worldchain,
 } from "viem/chains";
 
 const chains = [
   base,
+  robinhood,
   baseSepolia,
   mainnet,
   bsc,
@@ -31,6 +33,7 @@ export const wagmiConfig = createConfig({
   connectors: [injected({ shimDisconnect: true })],
   transports: {
     [base.id]: http(),
+    [robinhood.id]: http("https://rpc.mainnet.chain.robinhood.com"),
     [baseSepolia.id]: http(),
     [mainnet.id]: http(),
     [bsc.id]: http(),

@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Launch token",
   description:
-    "Launch ERC-20: nama, ticker, gambar, dan mint supply ke wallet tujuan.",
+    "Launch ERC-20: nama, ticker, website, gambar, dan mint supply ke wallet tujuan.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

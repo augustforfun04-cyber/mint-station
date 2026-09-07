@@ -7,6 +7,7 @@ import {
   mainnet,
   optimism,
   polygon,
+  robinhood,
   unichain,
   worldchain,
   type Chain,
@@ -24,6 +25,14 @@ export type ChainOption = {
 
 export const CHAIN_OPTIONS: ChainOption[] = [
   { id: base.id, key: "base", label: "Base", short: "Base", native: "ETH", chain: base },
+  {
+    id: robinhood.id,
+    key: "robinhood",
+    label: "Robinhood Chain",
+    short: "Robinhood",
+    native: "ETH",
+    chain: robinhood,
+  },
   {
     id: baseSepolia.id,
     key: "base-sepolia",

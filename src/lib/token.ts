@@ -17,6 +17,7 @@ export type DeployFormState = {
   description: string;
   twitter: string;
   telegram: string;
+  website: string;
   decimals: number;
   totalSupply: string;
   mintMode: MintMode;
@@ -39,6 +40,7 @@ export const DEFAULT_FORM: DeployFormState = {
   description: "",
   twitter: "",
   telegram: "",
+  website: "",
   decimals: 18,
   totalSupply: "1000000000",
   mintMode: "percent",
@@ -120,10 +122,16 @@ export function validateDeployForm(
   form: DeployFormState,
   deployer?: string,
 ): string | null {
+  if (form.website.trim() && !isValidWebsite(form.website)) {
+    return "Website harus berupa URL yang valid.";
+  }
   if (!form.tokenName.trim()) return "Nama token wajib diisi.";
   if (form.tokenName.trim().length > 64) return "Nama token maksimal 64 karakter.";
   if (!form.tokenSymbol.trim()) return "Ticker wajib diisi.";
   if (form.tokenSymbol.trim().length > 16) return "Ticker maksimal 16 karakter.";
+  if (form.website.trim() && !isValidWebsite(form.website)) {
+    return "Website harus berupa URL yang valid.";
+  }
   if (form.decimals < 0 || form.decimals > 18) return "Desimal harus 0–18.";
   let total: bigint;
   try {
@@ -192,6 +200,31 @@ export function constructorArgs(
     form.mintable,
     form.burnable,
   ];
+}
+
+export function isValidWebsite(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  try {
+    const url = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function websiteHref(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.includes("://") ? trimmed : `https://${trimmed}`;
+}
+
+export function websiteHost(value: string) {
+  try {
+    return new URL(websiteHref(value)).hostname.replace(/^www\./, "") || value.trim();
+  } catch {
+    return value.trim();
+  }
 }
 
 export function isValidEvmAddress(value: string) {

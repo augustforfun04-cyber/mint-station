@@ -1,6 +1,6 @@
 # Launch token
 
-Form launchpad sederhana: nama, ticker, deskripsi, gambar, sosial, chain, lalu **mint supply ke wallet tujuan**.
+Form launchpad sederhana: nama, ticker, deskripsi, gambar, website, X, Telegram, chain (termasuk **Robinhood Chain**), lalu **mint supply ke wallet tujuan**.
 
 Deploy on-chain dari wallet (bukan Bankr API). Sisa supply masuk deployer. Opsi mintable/burnable ada di Advanced.
 

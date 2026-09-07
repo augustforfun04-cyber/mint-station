@@ -8,6 +8,7 @@ export type DeployRecord = {
   destination: string;
   mintedToDestination: string;
   totalSupply: string;
+  website?: string;
 };
 
 const KEY = "manual.token.deploys";

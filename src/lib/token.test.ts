@@ -50,6 +50,21 @@ test("validasi wallet tujuan jika ada mint", () => {
   assert.match(validateDeployForm(form) ?? "", /tidak valid/i);
 });
 
+test("website opsional, URL invalid ditolak", () => {
+  const base = {
+    ...DEFAULT_FORM,
+    tokenName: "Agent",
+    tokenSymbol: "AGT",
+    destination: "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D",
+  };
+  assert.equal(validateDeployForm(base), null);
+  assert.equal(validateDeployForm({ ...base, website: "example.com" }), null);
+  assert.match(
+    validateDeployForm({ ...base, website: "javascript:alert(1)" }) ?? "",
+    /website/i,
+  );
+});
+
 test("constructor args mengikuti mint custom", () => {
   const dest = "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D";
   const form = {

@@ -33,6 +33,8 @@ import {
   displayAmount,
   shortenAddress,
   validateDeployForm,
+  websiteHost,
+  websiteHref,
   type DeployFormState,
 } from "@/lib/token";
 
@@ -116,6 +118,7 @@ export function DeployForm() {
         destination: form.destination.trim(),
         mintedToDestination: displayAmount(alloc.toDestination, form.decimals),
         totalSupply: form.totalSupply,
+        website: form.website.trim(),
       });
       toast.success("Token launched.");
     } catch (err) {
@@ -194,6 +197,18 @@ export function DeployForm() {
             onChange={(e) => void onPickImage(e.target.files?.[0])}
           />
         </div>
+
+        <label className="block space-y-1.5">
+          <span className="text-sm text-zinc-400">Website</span>
+          <Input
+            className={fieldClass}
+            value={form.website}
+            onChange={(e) => patch({ website: e.target.value })}
+            placeholder="https://…"
+            inputMode="url"
+            autoComplete="url"
+          />
+        </label>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5">
@@ -338,6 +353,21 @@ export function DeployForm() {
             <Row label="Chain" value={chain.short} />
             <Row label="Paired with" value={chain.native} />
             <Row label="Supply" value={form.totalSupply} />
+            {form.website.trim() ? (
+              <div className="flex items-center justify-between gap-3">
+                <dt className="text-zinc-500">Website</dt>
+                <dd className="text-right">
+                  <a
+                    className="text-zinc-200 hover:underline"
+                    href={websiteHref(form.website)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    {websiteHost(form.website)}
+                  </a>
+                </dd>
+              </div>
+            ) : null}
             <Row
               label="Mint to"
               value={

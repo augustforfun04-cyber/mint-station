@@ -48,6 +48,20 @@ export function HistoryList() {
             {item.mintedToDestination} / {item.totalSupply}
           </p>
           <div className="mt-3 flex gap-3 text-xs">
+            {item.website ? (
+              <a
+                className="hover:underline"
+                href={
+                  item.website.includes("://")
+                    ? item.website
+                    : `https://${item.website}`
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                Website
+              </a>
+            ) : null}
             <a
               className="text-lime-300 hover:underline"
               href={explorerToken(item.chainId, item.tokenAddress)}
