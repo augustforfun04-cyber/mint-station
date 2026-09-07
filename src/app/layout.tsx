@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bankr Launchpad — Deploy token & mint ke wallet tujuan",
+  title: "Manual Token Lab — deploy & mint supply ke wallet tujuan",
   description:
-    "UI deploy token Bankr: fair launch Doppler/Uniswap V4, mint 15% supply ke wallet yang dituju, simulasi, dan claim fee.",
+    "Deploy ERC-20 on-chain tanpa Bankr API. Total supply, mint ke wallet tujuan, sisa, mintable, dan chain semuanya diatur manual.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -33,16 +33,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             {children}
           </main>
           <footer className="border-t border-white/10 py-6 text-center text-xs text-muted-foreground">
-            Mengikuti{" "}
-            <a
-              className="text-lime-300 hover:underline"
-              href="https://docs.bankr.bot/token-launching/overview"
-              target="_blank"
-              rel="noreferrer"
-            >
-              dokumentasi Bankr
-            </a>
-            . Supply tetap 100 miliar · tidak mintable setelah deploy.
+            Kontrak ERC-20 kamu sendiri · wallet menandatangani deploy · tidak
+            ada Bankr API.
           </footer>
         </Providers>
       </body>
