@@ -3,24 +3,20 @@
 import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { explorerToken, chainById } from "@/lib/chains";
-import { readHistory, type DeployRecord } from "@/lib/history";
+import { EMPTY_HISTORY, readHistory, subscribeHistory } from "@/lib/history";
 import { shortenAddress } from "@/lib/token";
 import { Badge } from "@/components/ui/badge";
 
-function subscribe() {
-  return () => {};
-}
-
-function getSnapshot(): DeployRecord[] {
-  return readHistory();
-}
-
-function getServerSnapshot(): DeployRecord[] {
-  return [];
+function getServerSnapshot() {
+  return EMPTY_HISTORY;
 }
 
 export function HistoryList() {
-  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const items = useSyncExternalStore(
+    subscribeHistory,
+    readHistory,
+    getServerSnapshot,
+  );
 
   if (items.length === 0) {
     return (
