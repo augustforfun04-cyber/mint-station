@@ -5,6 +5,7 @@ import {
   computeAllocation,
   constructorArgs,
   validateDeployForm,
+  withKeepPercent,
 } from "./token";
 
 const TEN18 = BigInt(10) ** BigInt(18);
@@ -63,6 +64,25 @@ test("website opsional, URL invalid ditolak", () => {
     validateDeployForm({ ...base, website: "javascript:alert(1)" }) ?? "",
     /website/i,
   );
+});
+
+test("you keep 50 sisakan 50 ke pair wallet", () => {
+  const dest = "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D";
+  const form = withKeepPercent(
+    {
+      ...DEFAULT_FORM,
+      tokenName: "Keep",
+      tokenSymbol: "KEEP",
+      destination: dest,
+    },
+    50,
+  );
+  const alloc = computeAllocation(form);
+  assert.equal(form.keepPercent, 50);
+  assert.equal(form.mintPercent, 50);
+  assert.equal(alloc.toDestination, BigInt(500_000_000) * TEN18);
+  assert.equal(alloc.toRemainder, BigInt(500_000_000) * TEN18);
+  assert.equal(validateDeployForm(form), null);
 });
 
 test("constructor args mengikuti mint custom", () => {

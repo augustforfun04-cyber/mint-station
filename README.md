@@ -1,8 +1,16 @@
-# Launch token
+# Launch
 
-Form launchpad sederhana: nama, ticker, deskripsi, gambar, website, X, Telegram, chain (termasuk **Robinhood Chain**), lalu **mint supply ke wallet tujuan**.
+Launchpad ERC-20: **name, pair, you keep, swap fee**, website, lalu mint on-chain dari wallet.
 
-Deploy on-chain dari wallet (bukan Bankr API). Sisa supply masuk deployer. Opsi mintable/burnable ada di Advanced. Tidak ada API key atau database.
+Fitur yang mengikuti Long Studio (tanpa factory Long / Uniswap hook):
+
+- Fetch metadata dari CA / Dexscreener
+- Pair WETH, USDC, atau stock ticker (NVDA, TSLA, …)
+- Swap fee tercatat (untuk LP nanti)
+- You Keep (reserved ke deployer, sisa ke wallet pair)
+- Claim, History, Settings (default pair/keep/IPFS)
+
+Deploy on-chain dari wallet. Tidak ada Bankr API, API key, atau database.
 
 ## Jalankan lokal
 

@@ -9,6 +9,11 @@ export type DeployRecord = {
   mintedToDestination: string;
   totalSupply: string;
   website?: string;
+  launcher?: string;
+  pair?: string;
+  swapFee?: number;
+  keepPercent?: number;
+  feeReceiver?: string;
 };
 
 const KEY = "manual.token.deploys";

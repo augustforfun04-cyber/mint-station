@@ -18,6 +18,13 @@ export type DeployFormState = {
   twitter: string;
   telegram: string;
   website: string;
+  discord: string;
+  farcaster: string;
+  docs: string;
+  pair: string;
+  swapFee: number;
+  keepPercent: number;
+  feeReceiver: string;
   decimals: number;
   totalSupply: string;
   mintMode: MintMode;
@@ -41,10 +48,17 @@ export const DEFAULT_FORM: DeployFormState = {
   twitter: "",
   telegram: "",
   website: "",
+  discord: "",
+  farcaster: "",
+  docs: "",
+  pair: "WETH",
+  swapFee: 1,
+  keepPercent: 50,
+  feeReceiver: "",
   decimals: 18,
   totalSupply: "1000000000",
   mintMode: "percent",
-  mintPercent: 100,
+  mintPercent: 50,
   mintAmount: "",
   destination: "",
   remainderTarget: "deployer",
@@ -122,15 +136,19 @@ export function validateDeployForm(
   form: DeployFormState,
   deployer?: string,
 ): string | null {
-  if (form.website.trim() && !isValidWebsite(form.website)) {
-    return "Website harus berupa URL yang valid.";
-  }
   if (!form.tokenName.trim()) return "Nama token wajib diisi.";
   if (form.tokenName.trim().length > 64) return "Nama token maksimal 64 karakter.";
   if (!form.tokenSymbol.trim()) return "Ticker wajib diisi.";
   if (form.tokenSymbol.trim().length > 16) return "Ticker maksimal 16 karakter.";
   if (form.website.trim() && !isValidWebsite(form.website)) {
     return "Website harus berupa URL yang valid.";
+  }
+  if (form.docs.trim() && !isValidWebsite(form.docs)) {
+    return "Docs harus berupa URL yang valid.";
+  }
+  if (form.swapFee < 0.3 || form.swapFee > 80) return "Swap fee harus 0.3–80%.";
+  if (form.keepPercent < 0 || form.keepPercent > 80) {
+    return "You Keep maksimal 80% (sisa ke wallet pair).";
   }
   if (form.decimals < 0 || form.decimals > 18) return "Desimal harus 0–18.";
   let total: bigint;
@@ -152,7 +170,10 @@ export function validateDeployForm(
     return "Mint ke wallet tujuan melebihi total supply.";
   }
   if (alloc.toDestination > ZERO && !isAddress(form.destination.trim(), { strict: false })) {
-    return "Wallet tujuan mint tidak valid.";
+    return "Wallet pair / tujuan untuk sisa supply tidak valid.";
+  }
+  if (form.feeReceiver.trim() && !isAddress(form.feeReceiver.trim(), { strict: false })) {
+    return "Fee receiver tidak valid.";
   }
   if (alloc.toDestination === ZERO && alloc.toRemainder === ZERO) {
     return "Tidak ada token yang di-mint.";
@@ -200,6 +221,16 @@ export function constructorArgs(
     form.mintable,
     form.burnable,
   ];
+}
+
+export function withKeepPercent(form: DeployFormState, keepPercent: number): DeployFormState {
+  const keep = Math.max(0, Math.min(80, keepPercent));
+  return {
+    ...form,
+    keepPercent: keep,
+    mintMode: "percent",
+    mintPercent: 100 - keep,
+  };
 }
 
 export function isValidWebsite(value: string) {

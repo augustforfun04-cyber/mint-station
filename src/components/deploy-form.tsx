@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { ImageIcon, Loader2 } from "lucide-react";
 import { useAccount, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import {
   Accordion,
@@ -27,6 +26,14 @@ import { asAppChainId } from "@/lib/wagmi";
 import { manualTokenAbi, manualTokenBytecode } from "@/lib/contract";
 import { pushHistory } from "@/lib/history";
 import {
+  FEATURED_PAIRS,
+  KEEP_PRESETS,
+  PAIR_OPTIONS,
+  SWAP_FEE_PRESETS,
+  pairById,
+} from "@/lib/pairs";
+import { readSettings, resolveMediaUrl, subscribeSettings, DEFAULT_SETTINGS } from "@/lib/settings";
+import {
   DEFAULT_FORM,
   computeAllocation,
   constructorArgs,
@@ -35,8 +42,11 @@ import {
   validateDeployForm,
   websiteHost,
   websiteHref,
+  withKeepPercent,
   type DeployFormState,
 } from "@/lib/token";
+import type { ImportedToken } from "@/lib/import-token";
+import { cn } from "@/lib/utils";
 
 const fieldClass =
   "h-11 rounded-xl border-white/10 bg-zinc-900/80 px-3 text-sm placeholder:text-zinc-500";
@@ -47,8 +57,26 @@ export function DeployForm() {
   const publicClient = usePublicClient();
   const { switchChainAsync } = useSwitchChain();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState<DeployFormState>(DEFAULT_FORM);
+  const defaults = useSyncExternalStore(
+    subscribeSettings,
+    readSettings,
+    () => DEFAULT_SETTINGS,
+  );
+  const [draft, setForm] = useState<DeployFormState | null>(null);
+  const form = draft ?? withKeepPercent(
+    {
+      ...DEFAULT_FORM,
+      pair: defaults.pair,
+      swapFee: defaults.swapFee,
+      destination: defaults.claimWallet,
+      feeReceiver: defaults.claimWallet,
+    },
+    defaults.keepPercent,
+  );
   const [busy, setBusy] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [importQuery, setImportQuery] = useState("");
+  const [moreLinks, setMoreLinks] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     token: string;
@@ -57,7 +85,7 @@ export function DeployForm() {
   } | null>(null);
 
   const patch = (next: Partial<DeployFormState>) =>
-    setForm((prev) => ({ ...prev, ...next }));
+    setForm({ ...form, ...next });
 
   const alloc = useMemo(() => computeAllocation(form, address), [form, address]);
   const destPct =
@@ -65,6 +93,8 @@ export function DeployForm() {
       ? 0
       : Number((alloc.toDestination * BigInt(1000)) / alloc.total) / 10;
   const chain = chainById(form.chainId);
+  const pair = pairById(form.pair);
+  const previewImage = resolveMediaUrl(form.image, defaults.ipfsGateway);
 
   async function onPickImage(file?: File) {
     if (!file) return;
@@ -75,6 +105,32 @@ export function DeployForm() {
     const reader = new FileReader();
     reader.onload = () => patch({ image: String(reader.result ?? "") });
     reader.readAsDataURL(file);
+  }
+
+  async function importToken() {
+    setFetching(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/import?q=${encodeURIComponent(importQuery)}`);
+      const data = (await res.json()) as ImportedToken & { error?: string };
+      if (!res.ok) throw new Error(data.error || "Import gagal.");
+      patch({
+        tokenName: data.name || form.tokenName,
+        tokenSymbol: data.symbol || form.tokenSymbol,
+        image: data.image || form.image,
+        website: data.website || form.website,
+        twitter: data.twitter || form.twitter,
+        telegram: data.telegram || form.telegram,
+        description: data.description || form.description,
+      });
+      toast.success("Metadata diisi dari Dexscreener.");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Import gagal.";
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setFetching(false);
+    }
   }
 
   async function deploy() {
@@ -119,6 +175,11 @@ export function DeployForm() {
         mintedToDestination: displayAmount(alloc.toDestination, form.decimals),
         totalSupply: form.totalSupply,
         website: form.website.trim(),
+        launcher: address,
+        pair: form.pair,
+        swapFee: form.swapFee,
+        keepPercent: form.keepPercent,
+        feeReceiver: form.feeReceiver.trim() || address,
       });
       toast.success("Token launched.");
     } catch (err) {
@@ -134,6 +195,24 @@ export function DeployForm() {
   return (
     <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="max-w-xl space-y-6">
+        <div className="flex gap-2">
+          <Input
+            className={fieldClass}
+            value={importQuery}
+            onChange={(e) => setImportQuery(e.target.value)}
+            placeholder="CA, Solana mint, or Dexscreener URL"
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            className="h-11 rounded-xl"
+            disabled={fetching}
+            onClick={() => void importToken()}
+          >
+            {fetching ? <Loader2 className="animate-spin" /> : "Fetch"}
+          </Button>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5">
             <span className="text-sm text-zinc-400">Name</span>
@@ -150,10 +229,78 @@ export function DeployForm() {
               className={`${fieldClass} uppercase`}
               value={form.tokenSymbol}
               onChange={(e) => patch({ tokenSymbol: e.target.value.toUpperCase() })}
-              placeholder="symbol"
+              placeholder="PEPE or longer"
               maxLength={16}
             />
           </label>
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm text-zinc-400">Pair</span>
+          <div className="flex flex-wrap gap-2">
+            {FEATURED_PAIRS.map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => patch({ pair: id })}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs",
+                  form.pair === id
+                    ? "border-white bg-white text-black"
+                    : "border-white/15 text-zinc-300 hover:border-white/30",
+                )}
+              >
+                {id}
+              </button>
+            ))}
+            <Select value={form.pair} onValueChange={(value) => patch({ pair: value })}>
+              <SelectTrigger className="h-8 w-auto rounded-full border-white/15 px-3 text-xs">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                {PAIR_OPTIONS.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label} · {option.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-zinc-500">
+            Stock-anchored (NVDA, TSLA…) atau WETH/USDC. Pair tercatat di kartu launch;
+            gas tetap {chain.native}.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm text-zinc-400">Swap fee</span>
+          <div className="flex flex-wrap gap-2">
+            {SWAP_FEE_PRESETS.map((fee) => (
+              <button
+                key={fee}
+                type="button"
+                onClick={() => patch({ swapFee: fee })}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs",
+                  form.swapFee === fee
+                    ? "border-white bg-white text-black"
+                    : "border-white/15 text-zinc-300 hover:border-white/30",
+                )}
+              >
+                {fee}%
+              </button>
+            ))}
+            <Input
+              className="h-8 w-16 rounded-full border-white/15 bg-zinc-900/80 px-2 text-xs"
+              value={String(form.swapFee)}
+              onChange={(e) => patch({ swapFee: Number(e.target.value) || 0 })}
+              inputMode="decimal"
+            />
+          </div>
+          <p className="text-xs text-zinc-500">
+            Catatan untuk LP. Token ini tidak memotong fee on-chain; klaim fee LP setelah
+            kamu pasang pool. Protocol 5% kalau pakai factory Long.
+          </p>
         </div>
 
         <label className="block space-y-1.5">
@@ -162,29 +309,35 @@ export function DeployForm() {
             className="min-h-24 rounded-xl border-white/10 bg-zinc-900/80 placeholder:text-zinc-500"
             value={form.description}
             onChange={(e) => patch({ description: e.target.value })}
-            placeholder="A short description of the token."
+            placeholder="Optional"
           />
         </label>
 
         <div className="space-y-1.5">
           <span className="text-sm text-zinc-400">Token image</span>
+          <Input
+            className={fieldClass}
+            value={form.image.startsWith("data:") ? "" : form.image}
+            onChange={(e) => patch({ image: e.target.value })}
+            placeholder="ipfs://… or https://…"
+          />
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex min-h-36 w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-zinc-900/40 text-sm text-zinc-400 hover:border-white/25"
+            className="flex min-h-28 w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-zinc-900/40 text-sm text-zinc-400 hover:border-white/25"
           >
-            {form.image ? (
+            {previewImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={form.image}
+                src={previewImage}
                 alt=""
-                className="h-28 w-28 rounded-2xl object-cover"
+                className="h-24 w-24 rounded-2xl object-cover"
               />
             ) : (
               <>
                 <ImageIcon className="size-8 opacity-50" />
                 <span className="rounded-full border border-white/15 px-3 py-1 text-xs">
-                  Choose image
+                  Paste, drop, or click
                 </span>
               </>
             )}
@@ -204,20 +357,19 @@ export function DeployForm() {
             className={fieldClass}
             value={form.website}
             onChange={(e) => patch({ website: e.target.value })}
-            placeholder="https://…"
+            placeholder="https://"
             inputMode="url"
-            autoComplete="url"
           />
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-sm text-zinc-400">X profile</span>
+            <span className="text-sm text-zinc-400">X</span>
             <Input
               className={fieldClass}
               value={form.twitter}
               onChange={(e) => patch({ twitter: e.target.value })}
-              placeholder="x.com/handle"
+              placeholder="https://"
             />
           </label>
           <label className="space-y-1.5">
@@ -226,10 +378,49 @@ export function DeployForm() {
               className={fieldClass}
               value={form.telegram}
               onChange={(e) => patch({ telegram: e.target.value })}
-              placeholder="t.me/community"
+              placeholder="https://"
             />
           </label>
         </div>
+
+        <button
+          type="button"
+          className="text-xs text-zinc-400 hover:text-white"
+          onClick={() => setMoreLinks((v) => !v)}
+        >
+          {moreLinks ? "Fewer links" : "More links"}
+        </button>
+        {moreLinks ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className="text-sm text-zinc-400">Discord</span>
+              <Input
+                className={fieldClass}
+                value={form.discord}
+                onChange={(e) => patch({ discord: e.target.value })}
+                placeholder="https://"
+              />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-sm text-zinc-400">Farcaster</span>
+              <Input
+                className={fieldClass}
+                value={form.farcaster}
+                onChange={(e) => patch({ farcaster: e.target.value })}
+                placeholder="https://"
+              />
+            </label>
+            <label className="space-y-1.5 sm:col-span-2">
+              <span className="text-sm text-zinc-400">Docs</span>
+              <Input
+                className={fieldClass}
+                value={form.docs}
+                onChange={(e) => patch({ docs: e.target.value })}
+                placeholder="https://"
+              />
+            </label>
+          </div>
+        ) : null}
 
         <label className="block space-y-1.5">
           <span className="text-sm text-zinc-400">Chain</span>
@@ -248,37 +439,46 @@ export function DeployForm() {
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-zinc-500">
-            Paired with {chain.native}. Gas dibayar dari wallet yang terhubung.
-          </p>
         </label>
 
         <div className="space-y-3">
-          <span className="text-sm text-zinc-400">Mint supply ke wallet tujuan</span>
+          <span className="text-sm text-zinc-400">You keep</span>
+          <div className="flex flex-wrap gap-2">
+            {KEEP_PRESETS.map((keep) => (
+              <button
+                key={keep}
+                type="button"
+                onClick={() => setForm(withKeepPercent(form, keep))}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs",
+                  form.keepPercent === keep
+                    ? "border-white bg-white text-black"
+                    : "border-white/15 text-zinc-300 hover:border-white/30",
+                )}
+              >
+                {keep}%
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-zinc-500">
+            {form.keepPercent}% reserved ke deployer. {100 - form.keepPercent}% ke wallet
+            pair. Maks 80%.
+          </p>
           <Input
             className={`${fieldClass} font-mono`}
             value={form.destination}
             onChange={(e) => patch({ destination: e.target.value })}
-            placeholder="0x…"
+            placeholder="Wallet pair / sisa supply 0x…"
           />
-          <div className="flex items-center justify-between text-xs text-zinc-500">
-            <span>{form.mintPercent}% ke tujuan</span>
-            <span>
-              {displayAmount(alloc.toDestination, form.decimals)} / {form.totalSupply}
-            </span>
-          </div>
-          <Slider
-            min={0}
-            max={100}
-            step={1}
-            value={[form.mintPercent]}
-            onValueChange={(value) =>
-              patch({ mintMode: "percent", mintPercent: value[0] ?? 0 })
-            }
-          />
-          <p className="text-xs text-zinc-500">
-            Sisa {100 - form.mintPercent}% masuk wallet deployer.
-          </p>
+          <label className="block space-y-1.5">
+            <span className="text-xs text-zinc-500">Fee receiver</span>
+            <Input
+              className={`${fieldClass} font-mono`}
+              value={form.feeReceiver}
+              onChange={(e) => patch({ feeReceiver: e.target.value })}
+              placeholder={address || "0x…"}
+            />
+          </label>
         </div>
 
         <Accordion type="single" collapsible>
@@ -327,7 +527,7 @@ export function DeployForm() {
           onClick={() => void deploy()}
         >
           {busy ? <Loader2 className="animate-spin" /> : null}
-          Launch token
+          {isConnected ? "Launch token" : "Connect to mine the CA and sign"}
         </Button>
       </div>
 
@@ -335,9 +535,9 @@ export function DeployForm() {
         <div className="rounded-3xl border border-white/10 bg-zinc-950 p-5">
           <div className="flex items-center gap-3">
             <div className="flex size-12 items-center justify-center overflow-hidden rounded-2xl bg-zinc-800">
-              {form.image ? (
+              {previewImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.image} alt="" className="size-full object-cover" />
+                <img src={previewImage} alt="" className="size-full object-cover" />
               ) : (
                 <ImageIcon className="size-5 text-zinc-500" />
               )}
@@ -351,7 +551,9 @@ export function DeployForm() {
           </div>
           <dl className="mt-5 space-y-3 text-sm">
             <Row label="Chain" value={chain.short} />
-            <Row label="Paired with" value={chain.native} />
+            <Row label="Pair" value={`${pair.label} · ${pair.kind}`} />
+            <Row label="Swap fee" value={`${form.swapFee}%`} />
+            <Row label="You keep" value={`${form.keepPercent}% reserved`} />
             <Row label="Supply" value={form.totalSupply} />
             {form.website.trim() ? (
               <div className="flex items-center justify-between gap-3">
@@ -369,14 +571,13 @@ export function DeployForm() {
               </div>
             ) : null}
             <Row
-              label="Mint to"
+              label="Pair wallet"
               value={
                 destPct > 0
                   ? `${destPct}% ${shortenAddress(form.destination, 3)}`
-                  : "deployer only"
+                  : "set wallet"
               }
             />
-            <Row label="Remainder" value={`${Math.round((100 - destPct) * 10) / 10}% deployer`} />
             <Row label="Launch" value="network gas" />
           </dl>
           {result ? (

@@ -1,6 +1,6 @@
 import { HistoryList } from "@/components/history-list";
 
-export default function RiwayatPage() {
+export default function HistoryPage() {
   return (
     <div className="space-y-5">
       <div>

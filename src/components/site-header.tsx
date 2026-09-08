@@ -7,8 +7,9 @@ import { WalletBar } from "@/components/wallet-bar";
 
 const NAV = [
   { href: "/", label: "Launch" },
-  { href: "/riwayat", label: "Explore" },
-  { href: "/mint", label: "Mint" },
+  { href: "/claim", label: "Claim" },
+  { href: "/history", label: "History" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function SiteHeader() {

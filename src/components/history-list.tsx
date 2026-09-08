@@ -44,8 +44,8 @@ export function HistoryList() {
             <Badge variant="secondary">{chainById(item.chainId).short}</Badge>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Mint ke {shortenAddress(item.destination, 4) || "—"} ·{" "}
-            {item.mintedToDestination} / {item.totalSupply}
+            Pair {item.pair ?? "WETH"} · Keep {item.keepPercent ?? "—"}% · Fee{" "}
+            {item.swapFee ?? "—"}% · Mint {item.mintedToDestination} / {item.totalSupply}
           </p>
           <div className="mt-3 flex gap-3 text-xs">
             {item.website ? (
@@ -70,6 +70,9 @@ export function HistoryList() {
             >
               Explorer
             </a>
+            <Link className="hover:underline" href="/claim">
+              Claim
+            </Link>
             <Link className="hover:underline" href={`/mint?token=${item.tokenAddress}`}>
               Mint lagi
             </Link>
