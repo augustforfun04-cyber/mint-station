@@ -7,7 +7,7 @@
     "build": "npm run compile && next build",
     "start": "next start --hostname 127.0.0.1 --port 4317",
     "lint": "eslint",
-    "test": "tsx --test src/lib/token.test.ts",
+    "test": "tsx --test src/lib/token.test.ts src/lib/pairs.test.ts",
     "compile": "node scripts/compile-token.mjs"
   },
   "engines": {

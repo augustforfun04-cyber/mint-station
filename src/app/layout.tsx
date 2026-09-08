@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Launch",
+  title: "Launch token",
   description:
-    "Launch ERC-20: name, pair, you keep, website, and mint supply on Robinhood Chain or other EVM networks.",
+    "Launch ERC-20 dengan pair Bankr (WETH, B20, saham Robinhood). Mint supply dari wallet kamu.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -33,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             {children}
           </main>
           <footer className="border-t border-white/8 py-6 text-center text-xs text-zinc-500">
-            Deploy on-chain dari wallet kamu.
+            Deploy on-chain dari wallet kamu. Pair mengikuti Bankr docs.
           </footer>
         </Providers>
       </body>

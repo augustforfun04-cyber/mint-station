@@ -26,7 +26,7 @@ export function WalletBar() {
         <Button
           type="button"
           size="sm"
-          className="rounded-full"
+          className="h-8 rounded-full bg-lime-400 px-4 text-black hover:bg-lime-300"
           onClick={() => injected && connect({ connector: injected })}
           disabled={!injected || isPending}
         >

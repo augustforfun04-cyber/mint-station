@@ -85,6 +85,22 @@ test("you keep 50 sisakan 50 ke pair wallet", () => {
   assert.equal(validateDeployForm(form), null);
 });
 
+test("mint 100% ke tujuan seperti form screenshot", () => {
+  const dest = "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D";
+  const form = {
+    ...DEFAULT_FORM,
+    tokenName: "Full",
+    tokenSymbol: "FULL",
+    destination: dest,
+    mintPercent: 100,
+    keepPercent: 0,
+  };
+  const alloc = computeAllocation(form);
+  assert.equal(alloc.toDestination, alloc.total);
+  assert.equal(alloc.toRemainder, BigInt(0));
+  assert.equal(validateDeployForm(form), null);
+});
+
 test("constructor args mengikuti mint custom", () => {
   const dest = "0x87be4dA49869fD055d5a60cAc2a6Dc61fdd3052D";
   const form = {

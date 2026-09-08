@@ -51,14 +51,14 @@ export const DEFAULT_FORM: DeployFormState = {
   discord: "",
   farcaster: "",
   docs: "",
-  pair: "WETH",
+  pair: "weth",
   swapFee: 1,
-  keepPercent: 50,
+  keepPercent: 0,
   feeReceiver: "",
   decimals: 18,
   totalSupply: "1000000000",
   mintMode: "percent",
-  mintPercent: 50,
+  mintPercent: 100,
   mintAmount: "",
   destination: "",
   remainderTarget: "deployer",
@@ -147,8 +147,8 @@ export function validateDeployForm(
     return "Docs harus berupa URL yang valid.";
   }
   if (form.swapFee < 0.3 || form.swapFee > 80) return "Swap fee harus 0.3–80%.";
-  if (form.keepPercent < 0 || form.keepPercent > 80) {
-    return "You Keep maksimal 80% (sisa ke wallet pair).";
+  if (form.keepPercent < 0 || form.keepPercent > 100) {
+    return "Sisa ke deployer harus 0–100%.";
   }
   if (form.decimals < 0 || form.decimals > 18) return "Desimal harus 0–18.";
   let total: bigint;
@@ -224,12 +224,22 @@ export function constructorArgs(
 }
 
 export function withKeepPercent(form: DeployFormState, keepPercent: number): DeployFormState {
-  const keep = Math.max(0, Math.min(80, keepPercent));
+  const keep = Math.max(0, Math.min(100, keepPercent));
   return {
     ...form,
     keepPercent: keep,
     mintMode: "percent",
     mintPercent: 100 - keep,
+  };
+}
+
+export function withMintPercent(form: DeployFormState, mintPercent: number): DeployFormState {
+  const mint = Math.max(0, Math.min(100, mintPercent));
+  return {
+    ...form,
+    mintMode: "percent",
+    mintPercent: mint,
+    keepPercent: 100 - mint,
   };
 }
 

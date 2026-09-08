@@ -6,7 +6,7 @@ export default function ClaimPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Claim</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Reserved is permissionless. Rehype + LP fees after swaps.
+          Reserved sudah di-mint saat launch. Fee LP dicatat di form, klaim setelah pool hidup.
         </p>
       </div>
       <ClaimPanel />

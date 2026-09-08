@@ -31,7 +31,7 @@ export function ClaimPanel() {
       <div className="rounded-3xl border border-white/10 bg-zinc-950 p-6">
         <h2 className="text-lg font-medium">Claim reserved & fees</h2>
         <p className="mt-2 text-sm text-zinc-500">
-          Connect the wallet that launched, pick the token, then claim.
+          Connect wallet yang dipakai saat launch, pilih token, lalu cek reserved.
         </p>
         <div className="mt-4">
           <WalletBar />
@@ -49,8 +49,8 @@ export function ClaimPanel() {
     );
   }
 
-  const keep = token?.keepPercent ?? 50;
-  const pair = pairById(token?.pair ?? "WETH");
+  const keep = token?.keepPercent ?? 0;
+  const pair = pairById(token?.pair ?? "weth");
 
   return (
     <div className="space-y-4">
@@ -70,7 +70,7 @@ export function ClaimPanel() {
               {item.tokenName} ${item.tokenSymbol}
             </p>
             <p className="text-xs text-zinc-500">
-              Keep {item.keepPercent ?? 50}% · Pair {item.pair ?? "WETH"} · Fee{" "}
+              Keep {item.keepPercent ?? 0}% · Pair {pairById(item.pair ?? "weth").label} · Fee{" "}
               {item.swapFee ?? 1}%
             </p>
           </button>
@@ -88,8 +88,9 @@ export function ClaimPanel() {
             recorded · {pair.label}
           </p>
           <p className="mt-4 text-xs text-zinc-500">
-            Rehype + LP fees after swaps: fee tidak dipotong kontrak ERC-20 ini. Klaim
-            fee di DEX setelah pool hidup. Reserved sudah masuk wallet saat launch.
+            Fee LP tidak dipotong kontrak ERC-20 ini. Klaim fee di DEX setelah pool hidup.
+            Reserved sudah masuk wallet saat launch. Bankr Doppler memakai 0.7% pool fee
+            (95% ke creator) kalau kamu launch lewat Bankr, bukan dari form ini.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 text-xs">
             <a

@@ -40,7 +40,7 @@ export function SettingsForm() {
       <section className="rounded-3xl border border-white/10 bg-zinc-950 p-5">
         <h2 className="font-medium">Wallet defaults</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Pair, keep, and reserved claim wallet — per browser, dipakai di form Launch.
+          Pair Bankr, sisa ke deployer, dan wallet tujuan — dipakai di form Launch.
         </p>
         {!isConnected ? (
           <div className="mt-4">
@@ -58,13 +58,13 @@ export function SettingsForm() {
               >
                 {PAIR_OPTIONS.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.label}
+                  {p.label} · {p.name}
                   </option>
                 ))}
               </select>
             </label>
             <label className="block space-y-1.5 text-sm">
-              <span className="text-zinc-400">Default you keep</span>
+              <span className="text-zinc-400">Default sisa ke deployer</span>
               <select
                 className="h-11 w-full rounded-xl border border-white/10 bg-zinc-900 px-3"
                 value={form.keepPercent}

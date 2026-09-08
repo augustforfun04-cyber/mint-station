@@ -6,7 +6,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Pair, keep, and reserved claim wallet — per connected account.
+          Pair, sisa ke deployer, dan wallet tujuan — tersimpan di browser ini.
         </p>
       </div>
       <SettingsForm />

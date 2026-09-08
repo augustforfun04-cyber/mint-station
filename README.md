@@ -1,16 +1,21 @@
-# Launch
+# Launch token
 
-Launchpad ERC-20: **name, pair, you keep, swap fee**, website, lalu mint on-chain dari wallet.
+Launchpad ERC-20: isi nama, pair Bankr, mint supply ke wallet tujuan, lalu sign dari wallet kamu.
 
-Fitur yang mengikuti Long Studio (tanpa factory Long / Uniswap hook):
+Empat menu: **Launch**, **Claim**, **History**, **Settings**.
 
-- Fetch metadata dari CA / Dexscreener
-- Pair WETH, USDC, atau stock ticker (NVDA, TSLA, …)
-- Swap fee tercatat (untuk LP nanti)
-- You Keep (reserved ke deployer, sisa ke wallet pair)
-- Claim, History, Settings (default pair/keep/IPFS)
+## Pair Bankr
 
-Deploy on-chain dari wallet. Tidak ada Bankr API, API key, atau database.
+Form Launch memakai daftar pair dari Bankr docs:
+
+- **WETH** (default) di Base dan Robinhood Chain
+- Quote Base: BNKR, ba3Pump, cbHYPE, cbZEC, TAO
+- **B20** di Base: AAPL, AMZN, COIN, CRCL, GOOGL, INTC, META, MSFT, MSTR, NVDA, SNDK, SPCX, TSLA
+- Saham **Robinhood Chain** termasuk NVDA, TSLA, GME, MSTR, ADBE, DDOG, plus ticker umum (AAPL, SPY, …)
+
+Kalau Bankr sudah punya deploy live dengan pair saham itu, ticker-nya muncul di menu Pair (badge **live**) dan di **History → Bankr · pair saham live**.
+
+Mint tetap dari wallet (ERC-20 custom). Tidak memakai Bankr deploy API / API key.
 
 ## Jalankan lokal
 
@@ -70,9 +75,9 @@ npx vercel --prod
 
 ### Cek setelah live
 
-- Halaman `/` menampilkan form Launch (Name, Ticker, Website, Chain, mint ke wallet tujuan).
+- Halaman `/` menampilkan form Launch token (Name, Ticker, image, Website, X, Telegram, Chain, mint slider, pair Bankr).
 - Connect wallet di browser (ekstensi EVM). Deploy token membutuhkan native gas di chain yang dipilih (ETH di Base / Robinhood Chain, dst.).
-- History di `/riwayat` tetap di `localStorage` browser pengunjung, bukan di server Vercel.
+- History di `/history` menyimpan deploy lokal di `localStorage` dan menampilkan launch Bankr yang pair saham.
 
 ### Kalau build gagal
 

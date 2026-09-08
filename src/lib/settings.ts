@@ -10,8 +10,8 @@ const KEY = "mint-station.settings";
 const listeners = new Set<() => void>();
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  pair: "WETH",
-  keepPercent: 50,
+  pair: "weth",
+  keepPercent: 0,
   swapFee: 1,
   claimWallet: "",
   ipfsGateway: "https://ipfs.io/ipfs/",

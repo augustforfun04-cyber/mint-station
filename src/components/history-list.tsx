@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { explorerToken, chainById } from "@/lib/chains";
 import { EMPTY_HISTORY, readHistory, subscribeHistory } from "@/lib/history";
+import { pairById } from "@/lib/pairs";
 import { shortenAddress } from "@/lib/token";
 import { Badge } from "@/components/ui/badge";
 
@@ -44,8 +45,9 @@ export function HistoryList() {
             <Badge variant="secondary">{chainById(item.chainId).short}</Badge>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            Pair {item.pair ?? "WETH"} · Keep {item.keepPercent ?? "—"}% · Fee{" "}
-            {item.swapFee ?? "—"}% · Mint {item.mintedToDestination} / {item.totalSupply}
+            Pair {pairById(item.pair ?? "weth").label} · Mint {item.mintedToDestination} / {item.totalSupply}
+            {item.keepPercent != null ? ` · Sisa ${item.keepPercent}% deployer` : ""}
+            {item.swapFee != null ? ` · Fee ${item.swapFee}%` : ""}
           </p>
           <div className="mt-3 flex gap-3 text-xs">
             {item.website ? (

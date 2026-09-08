@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import {
   Accordion,
   AccordionContent,
@@ -17,7 +18,9 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -25,13 +28,8 @@ import { CHAIN_OPTIONS, chainById, explorerToken, explorerTx } from "@/lib/chain
 import { asAppChainId } from "@/lib/wagmi";
 import { manualTokenAbi, manualTokenBytecode } from "@/lib/contract";
 import { pushHistory } from "@/lib/history";
-import {
-  FEATURED_PAIRS,
-  KEEP_PRESETS,
-  PAIR_OPTIONS,
-  SWAP_FEE_PRESETS,
-  pairById,
-} from "@/lib/pairs";
+import { SWAP_FEE_PRESETS, defaultPairId, pairFitsChain } from "@/lib/pairs";
+import { useBankrCatalog } from "@/hooks/use-bankr-catalog";
 import { readSettings, resolveMediaUrl, subscribeSettings, DEFAULT_SETTINGS } from "@/lib/settings";
 import {
   DEFAULT_FORM,
@@ -42,7 +40,7 @@ import {
   validateDeployForm,
   websiteHost,
   websiteHref,
-  withKeepPercent,
+  withMintPercent,
   type DeployFormState,
 } from "@/lib/token";
 import type { ImportedToken } from "@/lib/import-token";
@@ -63,16 +61,20 @@ export function DeployForm() {
     () => DEFAULT_SETTINGS,
   );
   const [draft, setForm] = useState<DeployFormState | null>(null);
-  const form = draft ?? withKeepPercent(
-    {
-      ...DEFAULT_FORM,
-      pair: defaults.pair,
-      swapFee: defaults.swapFee,
-      destination: defaults.claimWallet,
-      feeReceiver: defaults.claimWallet,
-    },
-    defaults.keepPercent,
+  const form = useMemo(
+    () =>
+      draft ?? {
+        ...DEFAULT_FORM,
+        pair: defaults.pair,
+        swapFee: defaults.swapFee,
+        keepPercent: defaults.keepPercent,
+        mintPercent: 100 - defaults.keepPercent,
+        destination: defaults.claimWallet,
+        feeReceiver: defaults.claimWallet,
+      },
+    [draft, defaults],
   );
+  const bankr = useBankrCatalog(form.chainId);
   const [busy, setBusy] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [importQuery, setImportQuery] = useState("");
@@ -84,8 +86,7 @@ export function DeployForm() {
     chainId: number;
   } | null>(null);
 
-  const patch = (next: Partial<DeployFormState>) =>
-    setForm({ ...form, ...next });
+  const patch = (next: Partial<DeployFormState>) => setForm({ ...form, ...next });
 
   const alloc = useMemo(() => computeAllocation(form, address), [form, address]);
   const destPct =
@@ -93,8 +94,22 @@ export function DeployForm() {
       ? 0
       : Number((alloc.toDestination * BigInt(1000)) / alloc.total) / 10;
   const chain = chainById(form.chainId);
-  const pair = pairById(form.pair);
+  const pair = bankr.resolve(
+    pairFitsChain(form.pair, form.chainId, bankr.catalog) ? form.pair : bankr.defaultId,
+  );
   const previewImage = resolveMediaUrl(form.image, defaults.ipfsGateway);
+  const liveForPair = bankr.launches.filter(
+    (item) =>
+      item.pairedStock?.symbol === pair.symbol &&
+      (item.chain === "base" ? form.chainId === 8453 : item.chain === "robinhood" ? form.chainId === 4663 : false),
+  );
+
+  function setChain(nextChainId: number) {
+    const nextPair = pairFitsChain(form.pair, nextChainId, bankr.catalog)
+      ? form.pair
+      : defaultPairId(nextChainId);
+    patch({ chainId: nextChainId, pair: nextPair });
+  }
 
   async function onPickImage(file?: File) {
     if (!file) return;
@@ -135,7 +150,10 @@ export function DeployForm() {
 
   async function deploy() {
     setError(null);
-    const invalid = validateDeployForm(form, address);
+    const next = pairFitsChain(form.pair, form.chainId, bankr.catalog)
+      ? form
+      : { ...form, pair: pair.id };
+    const invalid = validateDeployForm(next, address);
     if (invalid) {
       setError(invalid);
       toast.error(invalid);
@@ -149,10 +167,10 @@ export function DeployForm() {
     }
     setBusy(true);
     try {
-      if (chainId !== form.chainId) {
-        await switchChainAsync({ chainId: asAppChainId(form.chainId) });
+      if (chainId !== next.chainId) {
+        await switchChainAsync({ chainId: asAppChainId(next.chainId) });
       }
-      const args = constructorArgs(form, address);
+      const args = constructorArgs(next, address);
       const hash = await walletClient.deployContract({
         abi: manualTokenAbi,
         bytecode: manualTokenBytecode,
@@ -163,23 +181,23 @@ export function DeployForm() {
       const receipt = await publicClient.waitForTransactionReceipt({ hash });
       const token = receipt.contractAddress;
       if (!token) throw new Error("Alamat kontrak kosong.");
-      setResult({ token, tx: hash, chainId: form.chainId });
+      setResult({ token, tx: hash, chainId: next.chainId });
       pushHistory({
         savedAt: Date.now(),
-        chainId: form.chainId,
-        tokenName: form.tokenName.trim(),
-        tokenSymbol: form.tokenSymbol.trim().toUpperCase(),
+        chainId: next.chainId,
+        tokenName: next.tokenName.trim(),
+        tokenSymbol: next.tokenSymbol.trim().toUpperCase(),
         tokenAddress: token,
         txHash: hash,
-        destination: form.destination.trim(),
-        mintedToDestination: displayAmount(alloc.toDestination, form.decimals),
-        totalSupply: form.totalSupply,
-        website: form.website.trim(),
+        destination: next.destination.trim(),
+        mintedToDestination: displayAmount(alloc.toDestination, next.decimals),
+        totalSupply: next.totalSupply,
+        website: next.website.trim(),
         launcher: address,
-        pair: form.pair,
-        swapFee: form.swapFee,
-        keepPercent: form.keepPercent,
-        feeReceiver: form.feeReceiver.trim() || address,
+        pair: pair.id,
+        swapFee: next.swapFee,
+        keepPercent: next.keepPercent,
+        feeReceiver: next.feeReceiver.trim() || address,
       });
       toast.success("Token launched.");
     } catch (err) {
@@ -191,6 +209,9 @@ export function DeployForm() {
       setBusy(false);
     }
   }
+
+  const cryptoPairs = bankr.pairs.filter((p) => p.kind === "crypto");
+  const stockPairs = bankr.pairs.filter((p) => p.kind === "stock");
 
   return (
     <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -229,78 +250,10 @@ export function DeployForm() {
               className={`${fieldClass} uppercase`}
               value={form.tokenSymbol}
               onChange={(e) => patch({ tokenSymbol: e.target.value.toUpperCase() })}
-              placeholder="PEPE or longer"
+              placeholder="SYMBOL"
               maxLength={16}
             />
           </label>
-        </div>
-
-        <div className="space-y-2">
-          <span className="text-sm text-zinc-400">Pair</span>
-          <div className="flex flex-wrap gap-2">
-            {FEATURED_PAIRS.map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => patch({ pair: id })}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs",
-                  form.pair === id
-                    ? "border-white bg-white text-black"
-                    : "border-white/15 text-zinc-300 hover:border-white/30",
-                )}
-              >
-                {id}
-              </button>
-            ))}
-            <Select value={form.pair} onValueChange={(value) => patch({ pair: value })}>
-              <SelectTrigger className="h-8 w-auto rounded-full border-white/15 px-3 text-xs">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAIR_OPTIONS.map((option) => (
-                  <SelectItem key={option.id} value={option.id}>
-                    {option.label} · {option.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <p className="text-xs text-zinc-500">
-            Stock-anchored (NVDA, TSLA…) atau WETH/USDC. Pair tercatat di kartu launch;
-            gas tetap {chain.native}.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <span className="text-sm text-zinc-400">Swap fee</span>
-          <div className="flex flex-wrap gap-2">
-            {SWAP_FEE_PRESETS.map((fee) => (
-              <button
-                key={fee}
-                type="button"
-                onClick={() => patch({ swapFee: fee })}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs",
-                  form.swapFee === fee
-                    ? "border-white bg-white text-black"
-                    : "border-white/15 text-zinc-300 hover:border-white/30",
-                )}
-              >
-                {fee}%
-              </button>
-            ))}
-            <Input
-              className="h-8 w-16 rounded-full border-white/15 bg-zinc-900/80 px-2 text-xs"
-              value={String(form.swapFee)}
-              onChange={(e) => patch({ swapFee: Number(e.target.value) || 0 })}
-              inputMode="decimal"
-            />
-          </div>
-          <p className="text-xs text-zinc-500">
-            Catatan untuk LP. Token ini tidak memotong fee on-chain; klaim fee LP setelah
-            kamu pasang pool. Protocol 5% kalau pakai factory Long.
-          </p>
         </div>
 
         <label className="block space-y-1.5">
@@ -309,39 +262,33 @@ export function DeployForm() {
             className="min-h-24 rounded-xl border-white/10 bg-zinc-900/80 placeholder:text-zinc-500"
             value={form.description}
             onChange={(e) => patch({ description: e.target.value })}
-            placeholder="Optional"
+            placeholder="short description of the token."
           />
         </label>
 
         <div className="space-y-1.5">
           <span className="text-sm text-zinc-400">Token image</span>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            className="flex min-h-32 w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-zinc-900/40 text-sm text-zinc-400 hover:border-white/25"
+          >
+            {previewImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewImage} alt="" className="h-24 w-24 rounded-2xl object-cover" />
+            ) : (
+              <>
+                <ImageIcon className="size-8 opacity-50" />
+                <span>Choose image.</span>
+              </>
+            )}
+          </button>
           <Input
             className={fieldClass}
             value={form.image.startsWith("data:") ? "" : form.image}
             onChange={(e) => patch({ image: e.target.value })}
             placeholder="ipfs://… or https://…"
           />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex min-h-28 w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/15 bg-zinc-900/40 text-sm text-zinc-400 hover:border-white/25"
-          >
-            {previewImage ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewImage}
-                alt=""
-                className="h-24 w-24 rounded-2xl object-cover"
-              />
-            ) : (
-              <>
-                <ImageIcon className="size-8 opacity-50" />
-                <span className="rounded-full border border-white/15 px-3 py-1 text-xs">
-                  Paste, drop, or click
-                </span>
-              </>
-            )}
-          </button>
           <input
             ref={fileRef}
             type="file"
@@ -357,19 +304,19 @@ export function DeployForm() {
             className={fieldClass}
             value={form.website}
             onChange={(e) => patch({ website: e.target.value })}
-            placeholder="https://"
+            placeholder="URL"
             inputMode="url"
           />
         </label>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="space-y-1.5">
-            <span className="text-sm text-zinc-400">X</span>
+            <span className="text-sm text-zinc-400">X profile</span>
             <Input
               className={fieldClass}
               value={form.twitter}
               onChange={(e) => patch({ twitter: e.target.value })}
-              placeholder="https://"
+              placeholder="x.com/handle"
             />
           </label>
           <label className="space-y-1.5">
@@ -378,7 +325,7 @@ export function DeployForm() {
               className={fieldClass}
               value={form.telegram}
               onChange={(e) => patch({ telegram: e.target.value })}
-              placeholder="https://"
+              placeholder="t.me/community"
             />
           </label>
         </div>
@@ -424,10 +371,7 @@ export function DeployForm() {
 
         <label className="block space-y-1.5">
           <span className="text-sm text-zinc-400">Chain</span>
-          <Select
-            value={String(form.chainId)}
-            onValueChange={(value) => patch({ chainId: Number(value) })}
-          >
+          <Select value={String(form.chainId)} onValueChange={(value) => setChain(Number(value))}>
             <SelectTrigger className="h-11 w-full rounded-xl border-white/10 bg-zinc-900/80">
               <SelectValue />
             </SelectTrigger>
@@ -439,46 +383,139 @@ export function DeployForm() {
               ))}
             </SelectContent>
           </Select>
+          <p className="text-xs text-zinc-500">
+            Paired with {pair.symbol}. Gas dibayar dari wallet yang terhubung
+            {pair.kind === "stock"
+              ? ". Saham tokenized Bankr (B20 di Base, saham Robinhood di Robinhood Chain)."
+              : ""}
+          </p>
         </label>
 
-        <div className="space-y-3">
-          <span className="text-sm text-zinc-400">You keep</span>
+        <div className="space-y-2">
+          <span className="text-sm text-zinc-400">Pair</span>
           <div className="flex flex-wrap gap-2">
-            {KEEP_PRESETS.map((keep) => (
+            {bankr.featured.map((option) => (
               <button
-                key={keep}
+                key={option.id}
                 type="button"
-                onClick={() => setForm(withKeepPercent(form, keep))}
+                onClick={() => patch({ pair: option.id })}
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs",
-                  form.keepPercent === keep
+                  pair.id === option.id
                     ? "border-white bg-white text-black"
                     : "border-white/15 text-zinc-300 hover:border-white/30",
                 )}
               >
-                {keep}%
+                {option.label}
+                {option.live ? (
+                  <span
+                    className={cn(
+                      "ml-1 text-[10px]",
+                      pair.id === option.id ? "text-zinc-500" : "text-lime-400",
+                    )}
+                  >
+                    live
+                  </span>
+                ) : null}
               </button>
             ))}
+            <Select value={pair.id} onValueChange={(value) => patch({ pair: value })}>
+              <SelectTrigger className="h-8 w-auto rounded-full border-white/15 px-3 text-xs">
+                <SelectValue placeholder="Semua" />
+              </SelectTrigger>
+              <SelectContent>
+                {cryptoPairs.length ? (
+                  <SelectGroup>
+                    <SelectLabel>Quote Bankr</SelectLabel>
+                    {cryptoPairs.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.label} · {option.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ) : null}
+                {stockPairs.length ? (
+                  <SelectGroup>
+                    <SelectLabel>Saham Bankr</SelectLabel>
+                    {stockPairs.map((option) => (
+                      <SelectItem key={option.id} value={option.id}>
+                        {option.label}
+                        {option.live ? " · live" : ""} · {option.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                ) : null}
+              </SelectContent>
+            </Select>
+          </div>
+          {bankr.error ? (
+            <p className="text-xs text-zinc-500">Menu saham memakai daftar Bankr docs. Live feed sedang offline.</p>
+          ) : liveForPair.length ? (
+            <p className="text-xs text-zinc-500">
+              {liveForPair.length} launch Bankr sudah pakai pair {pair.symbol} di chain ini.
+            </p>
+          ) : pair.kind === "stock" ? (
+            <p className="text-xs text-zinc-500">
+              Pair ini ada di registry Bankr. Belum ada deploy live dengan ticker ini di 50 launch terakhir.
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2">
+          <span className="text-sm text-zinc-400">Swap fee</span>
+          <div className="flex flex-wrap gap-2">
+            {SWAP_FEE_PRESETS.map((fee) => (
+              <button
+                key={fee}
+                type="button"
+                onClick={() => patch({ swapFee: fee })}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs",
+                  form.swapFee === fee
+                    ? "border-white bg-white text-black"
+                    : "border-white/15 text-zinc-300 hover:border-white/30",
+                )}
+              >
+                {fee}%
+              </button>
+            ))}
+            <Input
+              className="h-8 w-16 rounded-full border-white/15 bg-zinc-900/80 px-2 text-xs"
+              value={String(form.swapFee)}
+              onChange={(e) => patch({ swapFee: Number(e.target.value) || 0 })}
+              inputMode="decimal"
+            />
           </div>
           <p className="text-xs text-zinc-500">
-            {form.keepPercent}% reserved ke deployer. {100 - form.keepPercent}% ke wallet
-            pair. Maks 80%.
+            Catatan untuk LP. Bankr Doppler memakai 0.7% pool fee (95% ke creator). Token ini tidak
+            memotong fee on-chain.
           </p>
+        </div>
+
+        <div className="space-y-3">
+          <span className="text-sm text-zinc-400">Mint supply ke wallet tujuan</span>
           <Input
             className={`${fieldClass} font-mono`}
             value={form.destination}
             onChange={(e) => patch({ destination: e.target.value })}
-            placeholder="Wallet pair / sisa supply 0x…"
+            placeholder="0x..."
           />
-          <label className="block space-y-1.5">
-            <span className="text-xs text-zinc-500">Fee receiver</span>
-            <Input
-              className={`${fieldClass} font-mono`}
-              value={form.feeReceiver}
-              onChange={(e) => patch({ feeReceiver: e.target.value })}
-              placeholder={address || "0x…"}
-            />
-          </label>
+          <Slider
+            value={[form.mintPercent]}
+            min={0}
+            max={100}
+            step={1}
+            onValueChange={(value) => setForm(withMintPercent(form, value[0] ?? 0))}
+          />
+          <div className="flex items-center justify-between text-xs text-zinc-400">
+            <span className="text-lime-300">{form.mintPercent}% ke tujuan</span>
+            <span>
+              {displayAmount(alloc.toDestination, form.decimals)} / {form.totalSupply || "0"}
+            </span>
+          </div>
+          <p className="text-xs text-zinc-500">
+            Sisa {form.keepPercent}% masuk wallet deployer
+          </p>
         </div>
 
         <Accordion type="single" collapsible>
@@ -496,6 +533,15 @@ export function DeployForm() {
                       patch({ totalSupply, maxSupply: totalSupply });
                     }}
                     inputMode="decimal"
+                  />
+                </label>
+                <label className="space-y-1.5">
+                  <span className="text-sm text-zinc-400">Fee receiver</span>
+                  <Input
+                    className={`${fieldClass} font-mono`}
+                    value={form.feeReceiver}
+                    onChange={(e) => patch({ feeReceiver: e.target.value })}
+                    placeholder={address || "0x…"}
                   />
                 </label>
                 <label className="flex items-center justify-between rounded-xl border border-white/10 px-3 py-2 text-sm">
@@ -527,7 +573,7 @@ export function DeployForm() {
           onClick={() => void deploy()}
         >
           {busy ? <Loader2 className="animate-spin" /> : null}
-          {isConnected ? "Launch token" : "Connect to mine the CA and sign"}
+          Launch token
         </Button>
       </div>
 
@@ -544,17 +590,23 @@ export function DeployForm() {
             </div>
             <div>
               <p className="font-medium">{form.tokenName || "Your token"}</p>
-              <p className="text-sm text-zinc-500">
-                {form.tokenSymbol || "ticker"}
-              </p>
+              <p className="text-sm text-zinc-500">{form.tokenSymbol || "ticker"}</p>
             </div>
           </div>
           <dl className="mt-5 space-y-3 text-sm">
             <Row label="Chain" value={chain.short} />
-            <Row label="Pair" value={`${pair.label} · ${pair.kind}`} />
-            <Row label="Swap fee" value={`${form.swapFee}%`} />
-            <Row label="You keep" value={`${form.keepPercent}% reserved`} />
+            <Row label="Paired with" value={pair.symbol} />
             <Row label="Supply" value={form.totalSupply} />
+            <Row
+              label="Mint to"
+              value={
+                destPct > 0
+                  ? `${Math.round(destPct)}% ${shortenAddress(form.destination, 3) || "—"}`
+                  : "0% —"
+              }
+            />
+            <Row label="Remainder" value={`${form.keepPercent}% deployer`} />
+            <Row label="Swap fee" value={`${form.swapFee}%`} />
             {form.website.trim() ? (
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-zinc-500">Website</dt>
@@ -570,14 +622,6 @@ export function DeployForm() {
                 </dd>
               </div>
             ) : null}
-            <Row
-              label="Pair wallet"
-              value={
-                destPct > 0
-                  ? `${destPct}% ${shortenAddress(form.destination, 3)}`
-                  : "set wallet"
-              }
-            />
             <Row label="Launch" value="network gas" />
           </dl>
           {result ? (

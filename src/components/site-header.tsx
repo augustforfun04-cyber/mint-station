@@ -16,27 +16,26 @@ export function SiteHeader() {
   const pathname = usePathname();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/8 bg-black/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/8 bg-black/80 backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex size-8 items-center justify-center rounded-lg bg-zinc-800 text-sm font-semibold">
-            L
+          <Link
+            href="/"
+            className="flex size-8 items-center justify-center rounded-full bg-zinc-800 text-sm font-semibold"
+          >
+            B
           </Link>
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-4">
             {NAV.map((item) => {
               const active =
-                item.href === "/"
-                  ? pathname === "/"
-                  : pathname.startsWith(item.href);
+                item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "rounded-full px-3 py-1.5 text-sm transition-colors",
-                    active
-                      ? "bg-zinc-800 text-white"
-                      : "text-zinc-400 hover:text-white",
+                    "text-sm transition-colors",
+                    active ? "text-white" : "text-zinc-500 hover:text-white",
                   )}
                 >
                   {item.label}
