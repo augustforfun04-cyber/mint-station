@@ -214,7 +214,7 @@ export function DeployForm() {
   const stockPairs = bankr.pairs.filter((p) => p.kind === "stock");
 
   return (
-    <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid items-start gap-10 md:grid-cols-[minmax(0,1fr)_320px]">
       <div className="max-w-xl space-y-6">
         <div className="flex gap-2">
           <Input
